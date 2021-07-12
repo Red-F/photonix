@@ -19,7 +19,8 @@ import {
   SETTINGS_COLOR,
   SETTINGS_LOCATION,
   SETTINGS_OBJECT,
-  // SETTINGS_SOURCE_FOLDER,
+  SETTINGS_FACE,
+  SETTINGS_SOURCE_FOLDER,
   GET_SETTINGS,
 } from '../graphql/settings'
 // import folder from '../static/images/folder.svg'
@@ -42,22 +43,27 @@ export default function Settings() {
     {
       key: 'classificationColorEnabled',
       type: 'boolean',
-      label: 'Run color analysis on photos?',
+      label: 'Run color analysis on photos',
     },
     {
       key: 'classificationLocationEnabled',
       type: 'boolean',
-      label: 'Run location detection on photos?',
+      label: 'Run location detection on photos',
+    },
+    {
+      key: 'classificationFaceEnabled',
+      type: 'boolean',
+      label: 'Run face recognition on photos',
     },
     {
       key: 'classificationStyleEnabled',
       type: 'boolean',
-      label: 'Run style classification on photos?',
+      label: 'Run style classification on photos',
     },
     {
       key: 'classificationObjectEnabled',
       type: 'boolean',
-      label: 'Run object detection on photos?',
+      label: 'Run object detection on photos',
     },
   ]
 
@@ -100,6 +106,14 @@ export default function Settings() {
           },
         }).catch((e) => {})
         return key
+      case 'classificationFaceEnabled':
+        settingUpdateFace({
+          variables: {
+            classificationFaceEnabled: newSettings.classificationFaceEnabled,
+            libraryId: activeLibrary?.id,
+          },
+        }).catch((e) => {})
+        return key
       default:
         return null
     }
@@ -129,7 +143,8 @@ export default function Settings() {
   const [settingUpdateColor] = useMutation(SETTINGS_COLOR)
   const [settingUpdateLocation] = useMutation(SETTINGS_LOCATION)
   const [settingUpdateObject] = useMutation(SETTINGS_OBJECT)
-  // const [settingUpdateSourceFolder] = useMutation(SETTINGS_SOURCE_FOLDER)
+  const [settingUpdateFace] = useMutation(SETTINGS_FACE)
+  const [settingUpdateSourceFolder] = useMutation(SETTINGS_SOURCE_FOLDER)
 
   return (
     <Modal className="Settings" topAccent={true}>
@@ -185,16 +200,23 @@ export const useSettings = (activeLibrary) => {
   const { loading, data, refetch } = useQuery(GET_SETTINGS, {
     variables: { libraryId: activeLibrary?.id },
   })
+  const isInitialMount = useRef(true)
 
   useEffect(() => {
-    if (activeLibrary && !loading) {
-      refetch()
+    refetch()
+  }, [activeLibrary, refetch])
+
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false
+    } else {
+      if (!loading && data) {
+        let setting = { ...data.librarySetting.library }
+        setting.sourceDirs = data.librarySetting.sourceFolder
+        setSettings(setting)
+      }
     }
-    if (!loading) {
-      let settings = { ...data.librarySetting.library }
-      settings.sourceDirs = data.librarySetting.sourceFolder
-      setSettings(settings)
-    }
+    // TODO: Re-sync with desktop app
     // if (window.sendSyncToElectron) {
     //   let result = window.sendSyncToElectron('get-settings')
     //   setSettings(result)
